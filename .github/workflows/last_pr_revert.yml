@@ -11,25 +11,34 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 10  # Ensures we get commit history for checking merges
+          fetch-depth: 20  # Fetch enough history to find merge commits
 
-      - name: Get Last Merged Commit
+      - name: Find Last Merged PR Commit
         run: |
+          echo "🔍 Searching for last merged PR..."
           LAST_MERGE_COMMIT=$(git log --merges --pretty=format:"%H" -n 1)
+
           if [ -z "$LAST_MERGE_COMMIT" ]; then
-            echo "No merge commits found! Exiting..."
+            echo "❌ No merge commits found! Exiting..."
             exit 1
           fi
+
+          echo "✅ Found last merged commit: $LAST_MERGE_COMMIT"
           echo "LAST_MERGE_COMMIT=$LAST_MERGE_COMMIT" >> $GITHUB_ENV
 
-      - name: Revert Last Merged Commit
+      - name: Set Up Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Revert Last Merged PR
         run: |
           echo "🔄 Reverting last merged PR: $LAST_MERGE_COMMIT"
-          
+
           # Ensure we are on the latest main branch
           git checkout main
           git pull origin main --rebase
-          
+
           # Revert the merge commit (-m 1 specifies the main branch as the parent)
           git revert -m 1 $LAST_MERGE_COMMIT || { echo "❌ Revert failed!"; exit 1; }
 
@@ -38,7 +47,4 @@ jobs:
       - name: Push Changes
         run: |
           echo "🚀 Pushing revert commit..."
-          git remote set-url origin https://$GH_PAT@github.com/Sprayer1122/github-actions-demo.git
           git push origin main
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
