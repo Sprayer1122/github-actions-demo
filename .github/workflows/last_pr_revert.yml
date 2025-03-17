@@ -33,21 +33,20 @@ jobs:
 
       - name: Revert Last Merged PR
         run: |
+          set -e  # Stop execution if any command fails
           echo "🔄 Reverting last merged PR: $LAST_MERGE_COMMIT"
 
-          # Ensure we have the latest updates from the remote repo
+          # Ensure we are on the latest main branch
+          git checkout main
           git pull origin main --rebase
 
           # Revert the merge commit (-m 1 specifies the main branch as the parent)
-          if git revert -m 1 $LAST_MERGE_COMMIT; then
-            echo "✅ Revert successful, committing changes..."
-            git commit -m "Reverted last merged PR ($LAST_MERGE_COMMIT)"
-          else
-            echo "❌ Revert failed! Exiting..."
-            exit 1
-          fi
+          git revert -m 1 $LAST_MERGE_COMMIT || { echo "❌ Revert failed!"; exit 1; }
+
+          echo "✅ Revert successful, committing changes..."
+          git commit -m "Reverted last merged PR ($LAST_MERGE_COMMIT)"
 
       - name: Push Changes
         run: |
           echo "🚀 Pushing revert commit..."
-          git push origin HEAD:main
+          git push origin main || { echo "❌ Push failed! Trying force push..."; git push --force origin main; }
