@@ -33,7 +33,6 @@ jobs:
 
       - name: Revert Last Merged PR
         run: |
-          set -e  # Stop execution if any command fails
           echo "🔄 Reverting last merged PR: $LAST_MERGE_COMMIT"
 
           # Ensure we are on the latest main branch
@@ -43,10 +42,9 @@ jobs:
           # Revert the merge commit (-m 1 specifies the main branch as the parent)
           git revert -m 1 $LAST_MERGE_COMMIT || { echo "❌ Revert failed!"; exit 1; }
 
-          echo "✅ Revert successful, committing changes..."
-          git commit -m "Reverted last merged PR ($LAST_MERGE_COMMIT)"
+          echo "✅ Revert successful."
 
       - name: Push Changes
         run: |
           echo "🚀 Pushing revert commit..."
-          git push origin main || { echo "❌ Push failed! Trying force push..."; git push --force origin main; }
+          git push origin main
