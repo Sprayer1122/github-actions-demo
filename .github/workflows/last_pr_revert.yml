@@ -42,8 +42,12 @@ jobs:
           if git revert -m 1 $LAST_MERGE_COMMIT; then
             echo "✅ Revert successful, committing changes..."
             git commit -m "Reverted last merged PR ($LAST_MERGE_COMMIT)"
-            git push origin main
           else
             echo "❌ Revert failed! Exiting..."
             exit 1
           fi
+
+      - name: Push Changes
+        run: |
+          echo "🚀 Pushing revert commit..."
+          git push origin HEAD:main
