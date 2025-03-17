@@ -1,27 +1,34 @@
 name: Revert Last Merged PR
 
-on: 
-    workflow_dispatch:  # Allows manual triggering from GitHub Actions UI
+on:
+  workflow_dispatch:  # Allows manual triggering from GitHub Actions UI
 
 jobs:
-    revert_last_pr:
-        runs-on: ubuntu-latest
-        
-        steps:
-            - name: Checkout Repository
-              uses: actions/checkout@v3
-              with:
-                fetch-depth: 2  # Ensures we get the last commit history
+  revert_last_pr:
+    runs-on: ubuntu-latest
 
-            - name: Get Last Merged Commit
-              run: |
-                LAST_COMMIT=$(git log --merges -n 1 --pretty=format:"%H")
-                echo "LAST_COMMIT=$LAST_COMMIT" >> $GITHUB_ENV
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 10  # Ensures we get commit history for checking merges
 
-            - name: Revert Last Merged Commit
-              run: |
-                git config --global user.name "github-actions[bot]"
-                git config --global user.email "github-actions[bot]@users.noreply.github.com"
-                git revert --no-commit $LAST_COMMIT || echo "No merge commits found!"
-                git commit -m "Revert last merged PR ($LAST_COMMIT)"
-                git push origin main
+      - name: Get Last Merged Commit
+        run: |
+          LAST_MERGE_COMMIT=$(git log --merges --pretty=format:"%H" -n 1)
+          if [ -z "$LAST_MERGE_COMMIT" ]; then
+            echo "No merge commits found! Exiting..."
+            exit 1
+          fi
+          echo "LAST_MERGE_COMMIT=$LAST_MERGE_COMMIT" >> $GITHUB_ENV
+
+      - name: Revert Last Merged Commit
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Revert using -m 1 (to keep the main branch changes)
+          git revert -m 1 $LAST_MERGE_COMMIT || { echo "Revert failed!"; exit 1; }
+
+          git commit -m "Reverted last merged PR ($LAST_MERGE_COMMIT)"
+          git push origin main
