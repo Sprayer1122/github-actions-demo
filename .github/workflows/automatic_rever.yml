@@ -1,0 +1,29 @@
+name: Revert Last PR on New PR
+
+on: 
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    revert_last_pr:
+        runs-on: ubuntu-latest
+        
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v3
+              with:
+                fetch-depth: 2  # Ensures we have access to the last commit
+
+            - name: Get Last Merged Commit
+              run: |
+                LAST_COMMIT=$(git log --merges -n 1 --pretty=format:"%H")
+                echo "LAST_COMMIT=$LAST_COMMIT" >> $GITHUB_ENV
+
+            - name: Revert Last Merged Commit
+              run: |
+                git config --global user.name "github-actions[bot]"
+                git config --global user.email "github-actions[bot]@users.noreply.github.com"
+                git revert --no-commit $LAST_COMMIT || echo "No merge commits found!"
+                git commit -m "Revert last merged PR ($LAST_COMMIT)"
+                git push origin HEAD:${{ github.event.pull_request.head.ref }}
