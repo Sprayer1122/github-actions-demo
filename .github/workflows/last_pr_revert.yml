@@ -11,24 +11,39 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 10  # Ensures we get commit history for checking merges
+          fetch-depth: 20  # Fetch enough history to find merge commits
 
-      - name: Get Last Merged Commit
+      - name: Find Last Merged PR Commit
         run: |
+          echo "🔍 Searching for last merged PR..."
           LAST_MERGE_COMMIT=$(git log --merges --pretty=format:"%H" -n 1)
+
           if [ -z "$LAST_MERGE_COMMIT" ]; then
-            echo "No merge commits found! Exiting..."
+            echo "❌ No merge commits found! Exiting..."
             exit 1
           fi
+
+          echo "✅ Found last merged commit: $LAST_MERGE_COMMIT"
           echo "LAST_MERGE_COMMIT=$LAST_MERGE_COMMIT" >> $GITHUB_ENV
 
-      - name: Revert Last Merged Commit
+      - name: Set Up Git Identity
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Revert using -m 1 (to keep the main branch changes)
-          git revert -m 1 $LAST_MERGE_COMMIT || { echo "Revert failed!"; exit 1; }
 
-          git commit -m "Reverted last merged PR ($LAST_MERGE_COMMIT)"
-          git push origin main
+      - name: Revert Last Merged PR
+        run: |
+          echo "🔄 Reverting last merged PR: $LAST_MERGE_COMMIT"
+
+          # Ensure we have the latest updates from the remote repo
+          git pull origin main --rebase
+
+          # Revert the merge commit (-m 1 specifies the main branch as the parent)
+          if git revert -m 1 $LAST_MERGE_COMMIT; then
+            echo "✅ Revert successful, committing changes..."
+            git commit -m "Reverted last merged PR ($LAST_MERGE_COMMIT)"
+            git push origin main
+          else
+            echo "❌ Revert failed! Exiting..."
+            exit 1
+          fi
